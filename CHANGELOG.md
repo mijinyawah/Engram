@@ -1,5 +1,53 @@
 # Changelog
 
+## v2.2.0 — 2026-07-29
+
+Theme: environment-aware and self-updating. Closes the biggest gaps from the v1.6.0 audit — the plugin now adapts to the user's actual machine, gates developer-only concepts behind demonstrated technical use, catches untracked project work before it's lost, and tells the user when it's updated instead of leaving them to ask.
+
+### Added
+- `.start-session-version` — workspace file recording which plugin version last synced it. Written by `/setup`, updated by `/migrate` only after the user approves.
+- `/start-session` — new Step 0: compares the workspace's recorded version against the plugin's current version and surfaces a one-line, non-blocking mention if they've drifted, offering `/migrate`.
+- `/migrate` — new Step 0: reads `CHANGELOG.md`, translates what changed into plain language, and asks before touching anything (previously only asked before the state/log restructure specifically — the whole migration now explains itself upfront).
+- `CLAUDE.md` — new "Environment" section (OS + version, default shell, path style, package manager(s), cloud-sync quirks, optional multi-machine path map). Captured by detection first; interview only as fallback.
+- `CLAUDE.md` / `SKILL.md` — new Hard Rules: always match the user's actual shell/OS syntax; if a referenced path stops resolving, ask whether the machine changed rather than guessing.
+- `CLAUDE.md` — new "Project Capture" agent: notices untracked project-shaped work mid-conversation and offers once (native multi-choice) to run Project Kickoff. Rate-limited to one offer per conversation; a "not yet" leaves a breadcrumb in `memory/projects.md` → Unassigned ideas so the work isn't lost.
+- `/end-session` — if no project can be identified but the session produced real work, drops the same Unassigned-ideas breadcrumb rather than letting it evaporate.
+- `CLAUDE.md` / `SKILL.md` — Checkpoint protocol documented for file-template-only users (previously plugin-only, undocumented in the template).
+- `scaffold/GEMINI.md` — pointer file for Gemini CLI, which auto-discovers `GEMINI.md` rather than `AGENTS.md`.
+- `README.md` — platform table expanded: `AGENTS.md` documented as a genuine cross-tool convention (Codex CLI, Cursor, Windsurf, Copilot, Amp, Devin, Aider, Zed, Jules, VS Code, JetBrains Junie), with Cline called out as a verified exception (needs its own `.clinerules` — does not read `AGENTS.md` as of this writing), and Gemini CLI documented separately.
+
+### Changed
+- Project Kickoff flow (`CLAUDE.md`, `/new-project`) — the "handoff doc / CODEX.md needed?" question is now gated on the user's Technical Experience; skipped entirely for non-technical users instead of asked by default.
+- `templates/project-CLAUDE.md` — Tech Stack / Key Files / How to Run sections are now pruned automatically by the assistant at kickoff for non-technical projects, instead of left with a "delete if not applicable" comment for the user to act on.
+- `templates/project-CLAUDE.md` — How to Run fence de-bashed; commands are given in the user's actual shell per the new Environment section.
+- `memory/glossary.md` — now actually read at session start (fixes a claim/behavior mismatch — the file said it was read at session start, but no flow instructed it).
+
+### Fixed
+- `memory/glossary.md` — leading-lowercase sentence corrected.
+
+---
+
+## v2.1.0 — 2026-07-28
+
+Theme: decay management. v2.0.0 (plugin conversion) solved distribution; this release makes the system forget well — project files stop growing without bound in long-running projects, and duplicated facts (status in both glossary and index) stop drifting out of sync.
+
+### Added
+- `templates/project-LOG.md` — new append-only per-project session journal. One entry per session (Did / Decided / Learned / Left open), newest first, never trimmed, never read at session start.
+- `templates/project-CLAUDE.md` — new `## State` block at the top (status, phase, blockers, next 3 actions) so session start can orient from the first ~15 lines.
+- `CLAUDE.md` — new "Memory Ownership" table: one owner file per fact type (status → projects.md, state → project CLAUDE.md, history → LOG.md, definitions → glossary, identity → root CLAUDE.md, behavioral feedback → platform memory). Assistants check the table before saving a fact.
+- `scaffold/` now ships inside the plugin zip. **Fixes a v2.0.0 bug:** `setup`, `migrate`, and `new-project` all referenced `${CLAUDE_PLUGIN_ROOT}/scaffold/…`, but the shipped zip contained no scaffold — fresh plugin-only installs would fail at setup.
+
+### Changed
+- `templates/project-CLAUDE.md` — reframed as a *state* file with an explicit ~150-line size budget. "Decisions Log" replaced by "Decisions That Still Matter" (only decisions that actively constrain current work; prunable). Session narratives no longer live here.
+- Session End flow (`CLAUDE.md` + plugin `end-session.md`) — rewritten around "compact, don't accumulate": append session narrative to LOG.md, rewrite (not append) the project CLAUDE.md, enforce the size budget, enforce the one-sentence rule in `memory/projects.md`.
+- Session Start flow (`CLAUDE.md` + plugin `start-session.md`) — orients from the `## State` block; explicitly does NOT read LOG.md.
+- Project Kickoff flow (`CLAUDE.md` + plugin `new-project.md`/`setup.md`) — creates LOG.md alongside CLAUDE.md.
+- `memory/glossary.md` — Status column removed from Project Shorthand. Status lives only in `memory/projects.md`; anything stored twice eventually disagrees.
+- `memory/projects.md` — one-sentence-per-project rule made explicit and enforced at session end.
+- Plugin `migrate.md` — new step offering (asks first, never silent) a per-project state/log restructure for workspaces upgrading from earlier versions.
+
+---
+
 ## v2.0.0 — 2026-05-11
 
 ### Added

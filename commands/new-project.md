@@ -2,26 +2,68 @@
 description: Kick off a new tracked project with a context file and project index entry
 argument-hint: "<project-name>"
 ---
-# /new-project
 
-Kick off a new project. Creates a tracked project folder with a populated context file and registers it in the project index.
+# /new-project — New Project Kickoff
+
+Kick off a new tracked project. Creates the folder, generates a context file, and registers it in the project index.
+
+---
 
 ## Flow
 
-1. Ask for: project name, type (Tool / Website / Bot / Video / Design / Experiment / Other), one-line description, and whether a phased CODEX execution plan is needed.
+### 1. Gather project basics
 
-2. Read `memory/projects.md` to determine the next project ID. Find the highest valid ID number across all category sections (ignore template placeholders like `[ID-01]`). Increment by 1. If no valid IDs exist yet, start at 01. Apply the user's naming convention from `CLAUDE.md` (under "Our Projects"). If no convention exists, ask the user what ID format to use.
+Ask (or confirm if already stated):
+- **Project name** — what to call it
+- **Project type** — App, Website, Bot, Tool, Content, Design, Finance, Other
+- **One-line description** — what it is
+- **Current phase** — Idea, Planning, In Progress, etc.
 
-3. Check if a folder already exists in `projects/` matching the new slug. If one exists, ask the user if they meant to resume it instead.
+**Handoff doc (conditional):** check the user's root `CLAUDE.md` for a Technical Experience section. Only ask whether this project needs a phased execution plan / handoff doc for a coding agent (Codex, Claude Code, or similar) if that section indicates the user works with coding agents or does technical/dev work. If it says no technical work, or doesn't exist, skip this question — don't introduce a concept that won't mean anything to a non-technical user. If yes, create `CODEX.md` per Step 3 below.
 
-4. Create the project folder: `projects/[id-slug]/`
+Suggest a project ID based on type and the next available number in `memory/projects.md`:
+- App → CL-A##
+- Website → CL-W##
+- Bot → CL-B##
+- Finance → CL-F##
+- Productivity/Tool → CL-P##
+- Content/Video → CL-V##
+- Design → CL-D##
 
-5. Create `projects/[id-slug]/CLAUDE.md` from the template at `${CLAUDE_PLUGIN_ROOT}/scaffold/templates/project-CLAUDE.md`. Pre-fill: project name, ID, type, owner (from the user's CLAUDE.md), one-line description, and started date. Leave Tech Stack, Architecture, Design Direction, and Conventions as TBD.
+Show the suggested ID and ask: keep / modify.
 
-6. If a CODEX plan was requested, create `projects/[id-slug]/CODEX.md` from `${CLAUDE_PLUGIN_ROOT}/scaffold/templates/project-CODEX.md`. Pre-fill the project name.
+Generate a slug from the name (lowercase, hyphens, no special chars). Example: "My Week Clawde" → `my-week-clawde`.
 
-7. Add a line to `memory/projects.md` under the appropriate category section:
-   `- **[ID] — [Project Name]** 🔵 WIP — [one-line description].`
-   If the category doesn't exist yet, create a new section for it.
+### 2. Create project folder
 
-8. Confirm the project is set up and ask what to work on first.
+Create `projects/[slug]/` directory.
+
+### 3. Generate project context file
+
+Read `${CLAUDE_PLUGIN_ROOT}/scaffold/templates/project-CLAUDE.md`. Also create `projects/[slug]/LOG.md` from `${CLAUDE_PLUGIN_ROOT}/scaffold/templates/project-LOG.md` (header only, no entries yet). If the handoff doc was requested above, also create `projects/[slug]/CODEX.md` from `${CLAUDE_PLUGIN_ROOT}/scaffold/templates/project-CODEX.md`.
+
+**Prune non-technical sections automatically:** if the project type is non-technical (Content, Design, Video, etc.) or the user's Technical Experience indicates no dev work, remove the Tech Stack, Key Files, and How to Run sections from the generated file entirely — don't leave a "delete if not applicable" comment for the user to act on. If the project is technical, keep them and prefill what you can.
+
+Populate with the collected info and write to `projects/[slug]/CLAUDE.md`.
+
+### 4. Register in project index
+
+Add a line to `memory/projects.md` in the appropriate section:
+
+```
+- **CL-XX — Project Name** 🔵 WIP — one-line description.
+```
+
+Update the `Last updated` line at the bottom.
+
+### 5. Confirm
+
+Tell the user what was created. Offer to run `/start-session` on the new project.
+
+---
+
+## Notes
+
+- Do not create a `.session-checkpoints.md` file — that's created by `/checkpoint` only when needed
+- If the user wants to immediately add context (a brief, doc, notes), proceed into a brief intake conversation and update `projects/[slug]/CLAUDE.md` with what's captured
+- The project ID and slug are permanent — do not rename without user's explicit instruction

@@ -1,11 +1,15 @@
 # Projects
 
-Single source of truth for all your projects. Read at session start when no project is named.
+Single source of truth for all your projects. This file is read at session start (when no project is named) and is the canonical place to track project status.
 
 Status key: 🔵 WIP · 🟢 Live · ✅ Complete · ⏸️ On Hold · 📦 Shelved · 💡 Idea
 
-Format (one line per project):
+Format (one line per project — machine-parseable, do not change):
 `- **[ID] — [Project Name]** [emoji] Status — one-line description`
+
+Hard rule: **one sentence max per project.** Anything longer belongs in that project's
+`CLAUDE.md` (state) or `LOG.md` (history). At session end the assistant enforces this —
+if a line has grown into a paragraph, it trims the line and moves the detail into the project files.
 
 ---
 
@@ -25,7 +29,7 @@ Format (one line per project):
 
 ## 💡 Ideas / Queue
 
-<!-- Reserved IDs and rough ideas you might pick up later. Promote to a category section above when work begins. -->
+<!-- Reserved IDs and rough ideas you might pick up later. Promote into a category section above when work begins. -->
 
 - **[ID-03] — [Idea Name]** 💡 Idea — [one-line description]
 

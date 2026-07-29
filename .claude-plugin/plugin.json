@@ -1,8 +1,9 @@
 {
   "name": "start-session",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "Persistent, file-based memory for AI-assisted workflows. Give your assistant lasting context about who you are, how you work, and where each project stands — without databases, cloud sync, or repeated setup.",
   "author": {
     "name": "Hafsah Mijinyawa"
-  }
+  },
+  "lastUpdated": "2026-07-29"
 }

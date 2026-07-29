@@ -5,81 +5,117 @@ description: >
   file conventions, and session rules. Triggers on: starting a session, ending a session,
   checkpointing progress, working with project files, reading CLAUDE.md or memory files,
   or when the user asks how memory or tracking works.
-version: 2.0.0
+version: 2.2.0
 ---
----
-name: session-management
-description: >
-  Context layer for the start-session memory system. Load this skill whenever working within a
-  start-session workspace — any folder containing a CLAUDE.md populated by /setup. Triggers include:
-  references to projects, sessions, workspace files, memory files, the project index, or when
-  the user mentions "start session", "end session", "new project", or "checkpoint". Also load when
-  the user asks about their workspace structure, their project list, or how the memory system works.
+# Session Management Skill
+
+This skill gives you full context on the start-session workspace structure, file conventions, and hard rules. Load it when session-related topics arise — starting a session, ending a session, working with project files, or when a user asks about how memory or tracking works.
+
 ---
 
-# start-session — Memory System Context
+## Workspace structure
 
-This skill gives the assistant full context about how a start-session workspace is structured and how to navigate it.
+```
+[working directory]/
+├── CLAUDE.md                          ← primary context file (identity, tools, prefs, rules, agents)
+├── AGENTS.md                          ← cross-tool pointer → CLAUDE.md (Codex CLI, Cursor, Windsurf, Copilot, etc.)
+├── GEMINI.md                          ← Gemini CLI pointer → CLAUDE.md (Gemini looks for this name, not AGENTS.md)
+├── .start-session-version             ← plugin version this workspace was last synced to (written by setup/migrate)
+├── memory/
+│   ├── projects.md                    ← single source of truth for all projects
+│   └── glossary.md                    ← terms, acronyms, shorthand
+├── templates/
+│   ├── project-CLAUDE.md              ← template for new project state files
+│   ├── project-LOG.md                 ← template for append-only session logs
+│   └── project-CODEX.md              ← template for phased execution plans (optional)
+├── resources/
+│   └── example-agent.md              ← format reference for custom agents
+└── projects/
+    └── [project-slug]/
+        ├── CLAUDE.md                  ← per-project STATE (what's true now; ~150-line budget)
+        ├── LOG.md                     ← per-project HISTORY (append-only session journal)
+        ├── AGENTS.md                  ← operational state (codebase projects only)
+        └── .session-checkpoints.md   ← temporary mid-session saves (cleared at end-session)
+```
 
-## What this system is
+---
 
-start-session is a file-based memory scaffold. The user runs `/setup` once to generate a workspace — a folder of Markdown files the assistant reads at session start to stay oriented across sessions and projects.
+## File roles
 
-The system has two layers:
-- **Plugin (this)** — commands and protocols. Logic lives here and updates automatically.
-- **Workspace files** — user data. Lives in the user's folder. The user owns and edits these.
+Mnemonic: **CLAUDE.md is the map, LOG.md is the travel journal, the handoff doc is the work order.**
 
-## Workspace file structure
+**Root CLAUDE.md** — identity and preferences. Contains: My User, My User's Work, My User's Tools, References, Hard Rules, Custom Agents, Technical Experience, User Communication Preferences. Updated only by `/setup` or `/migrate`. Never touched by session commands.
 
-| File / Folder | Purpose |
-|---|---|
-| `CLAUDE.md` | User identity, tools, preferences, hard rules, references, custom agents table. The primary context file. |
-| `AGENTS.md` | Thin pointer to `CLAUDE.md` for Codex auto-discovery. Same source, two entry points. |
-| `memory/projects.md` | Single source of truth for all projects across all states. Read at session start when no project is named. |
-| `memory/glossary.md` | Terms, tools, acronyms, and shorthand the assistant should recognize. |
-| `templates/project-CLAUDE.md` | Template for new per-project context files. |
-| `templates/project-CODEX.md` | Template for phased execution plans (optional). |
-| `resources/example-agent.md` | Format reference for custom agent instruction files. |
-| `resources/[agent-name].md` | Agent instruction files created by the assistant when the user adds a custom agent. |
-| `projects/` | Contains per-project folders created during `/new-project`. |
-| `projects/[id-slug]/CLAUDE.md` | Per-project context: status, decisions, next steps. Updated at session end. |
+**memory/glossary.md** — terms, shorthand, acronyms, people. Read at session start (once per conversation) so the assistant doesn't need shorthand explained mid-conversation. Updated only by the user or via `/setup`/`/migrate` — never by session commands.
+
+**memory/projects.md** — the project index. One line per project, format: `- **CL-XX — Name** [emoji] Status — description`. Status key: 🔵 WIP · 🟢 Live · ✅ Complete · ⏸️ On Hold · 📦 Shelved · 💡 Idea. Updated by `/end-session` and `/new-project`.
+
+**projects/[slug]/CLAUDE.md** — per-project STATE. Rewritten (compacted) by `/end-session`, never accumulated. Contains: State block (status/phase/blockers/next), overview, tech stack, conventions, decisions that still matter, known issues, open questions, next session. Size budget: ~150 lines — history overflow moves to LOG.md.
+
+**projects/[slug]/LOG.md** — per-project HISTORY. Append-only session journal, newest entry first, written by `/end-session`. NOT read at session start — opened only for archaeology ("why did we do it that way?") or after long gaps. Never trimmed or rewritten.
+
+**projects/[slug]/AGENTS.md** — operational state for codebase projects. Updated by `/end-session`. Contains: status (phase, in flight, next, blocker), architecture, last session, decisions.
+
+**.session-checkpoints.md** — temporary. Accumulates during session via `/checkpoint`. Cleared by `/end-session` after contents are incorporated into LOG.md/CLAUDE.md.
+
+**.start-session-version** — one line, the plugin version last synced. Written by `/setup`, updated by `/migrate` only after the user approves applying changes. Read (never written) by `/start-session` to detect a pending update. Missing file = untracked/pre-version-tracking workspace, treated the same as a stale version.
+
+---
 
 ## Project index format
 
-`memory/projects.md` uses a machine-readable line format:
+Machine-parseable. Do not change the format:
+```
+- **CL-XX — Project Name** [emoji] Status — one-line description.
+```
+
+Project ID conventions:
+- CL-A## = App
+- CL-W## = Website
+- CL-B## = Bot / Telegram
+- CL-F## = Finance
+- CL-P## = Productivity / Tool
+- CL-V## = Content / Video
+- CL-D## = Design
+
+---
+
+## Custom agents pattern
+
+Custom agents are stored in the user's root CLAUDE.md as a table. Format:
+
+| Agent Name | Trigger | Behavior |
+|------------|---------|----------|
+| Name | When this arises | Do this |
+
+When a trigger condition is met during a session, apply the agent's behavior automatically.
+
+**Project Capture** is a built-in agent (not user-defined) documented in the root CLAUDE.md's Agents section, alongside Project Kickoff. It watches for untracked project-shaped work mid-conversation (files being produced over multiple turns, a recurring unnamed idea, a "save this" with no project home) and offers once — via native multi-choice — to run Project Kickoff. Rate-limited to one offer per conversation; never re-asks after a decline. A "not yet" answer still drops a one-line breadcrumb into `memory/projects.md` → Unassigned ideas, so the work isn't lost even if the user never revisits it.
+
+---
+
+## Hard rules (defaults — user may have customized)
+
+- Never modify root CLAUDE.md during a session (only `/setup` and `/migrate` do this)
+- Never delete any file without explicit user instruction
+- `/migrate` is additive-only — it never removes or overwrites existing content
+- Checkpoint files are temporary — always cleared at end-session
+- The project index (`memory/projects.md`) is the single source of truth — there is only one file
+- Project IDs and slugs are permanent once assigned
+- Never update `.start-session-version` without the user approving the `/migrate` summary first — a stale marker is the signal that keeps the update visible
+
+---
+
+## Session flow summary
 
 ```
-- **[ID] — [Project Name]** [emoji] Status — one-line description
+/setup        → one-time onboarding, generates all workspace files + .start-session-version
+/start-session → check .start-session-version against the plugin version, mention drift once, then
+                 read project context, orient, ask what to work on
+[work happens]
+/checkpoint   → mid-session save to .session-checkpoints.md
+/end-session  → save all progress, clear checkpoints, update project index
+/new-project  → create folder + context file, register in index
+/migrate      → explain what changed in plain language, ask, then add missing sections/files
+                and update .start-session-version
 ```
-
-Status emoji key: 🔵 WIP · 🟢 Live · ✅ Complete · ⏸️ On Hold · 📦 Shelved · 💡 Idea
-
-When reading the project index: list only 🔵 WIP and 🟢 Live projects by default. Skip ✅ ⏸️ 📦 💡 unless the user asks.
-
-## Project naming convention
-
-If the user set up a naming convention during `/setup`, it lives in their `CLAUDE.md` under "Our Projects." The format is typically:
-- `[PREFIX]-[CategoryLetter][##]-[slug]`
-- Example: `HS-V01-reel` or `BM-W02-site-redesign`
-
-Respect whatever convention is in the user's CLAUDE.md. If none exists, ask the user what ID format to use during `/new-project`.
-
-## Custom agents
-
-Custom agents live in two places:
-- `resources/[agent-name].md` — the instruction file (created and maintained by the assistant)
-- Custom Agents table in `CLAUDE.md` — the index (name, trigger phrases, what it does)
-
-When the user asks to add, change, or remove an agent, update both. The user never edits resource files directly.
-
-## Hard rules (always apply)
-
-These are system-level rules that apply in every session regardless of what the user's CLAUDE.md says:
-- If source material is inaccessible, say so clearly. Don't infer or approximate.
-- Distinguish recalled knowledge from verified knowledge.
-- Don't promise compatibility without knowing the user's version or environment.
-- Name at least one failure mode when proposing a solution.
-- Cite sources for claims and recommendations where possible.
-- For technical/software guidance, prioritize current documentation over training knowledge.
-
-The user's `CLAUDE.md` may contain additional hard rules specific to their workflow. Always read and respect those too.

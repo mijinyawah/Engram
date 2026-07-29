@@ -9,7 +9,9 @@ file-based memory for ai assistants
       claude cowork  ·  codex
 ```
 
-# Start-Session — An AI Memory Engine (v2.0.0)
+# start-session — AI Memory Engine (v2.2.0)
+
+*Last updated: 2026-07-29*
 
 Persistent, file-based memory for AI-assisted workflows. Give your assistant lasting context about who you are, how you work, and where each project stands — without databases, cloud sync, or repeated setup.
 
@@ -31,7 +33,9 @@ Available as a **plugin** (recommended) or as a standalone file template.
 |----------|-------------|
 | **Claude CoWork** | Install the plugin · commands available as `/setup`, `/start-session`, etc. |
 | **Claude Code** | Install the plugin · same commands available in terminal |
-| **Codex** | Use the file template · auto-discovers `AGENTS.md` → `CLAUDE.md` |
+| **Codex, Cursor, Windsurf, GitHub Copilot, Amp, Devin, Aider, Zed, Jules, VS Code, JetBrains Junie** | Auto-discover `AGENTS.md` → `CLAUDE.md`. `AGENTS.md` has become a genuine cross-tool convention, not a Codex-only file. |
+| **Gemini CLI** | Auto-discovers `GEMINI.md` instead (walks up from the working directory to the project root) → points to `CLAUDE.md`. |
+| **Cline** | Does not read `AGENTS.md` natively as of this writing — needs its own `.clinerules` file, or symlink one to `AGENTS.md`. |
 
 ---
 
@@ -44,7 +48,6 @@ Available as a **plugin** (recommended) or as a standalone file template.
 
 Then run `/setup` to create your workspace. Updates ship automatically — no reinstall needed.
 
-Or download and install session-start.plugin from this repo.
 ---
 
 ## Install (file template — no plugin required)
@@ -54,11 +57,11 @@ Or download and install session-start.plugin from this repo.
 3. Open that folder as your working directory in CoWork or Codex.
 4. In chat, type `run onboarding now` to begin setup.
 
-> **Note:** trigger phrases are protocol instructions, not hard automations. If a flow doesn't trigger, type the command directly (e.g. `run onboarding now`, `start session`, `end session`).
+> **Note:** trigger phrases are protocol instructions, not hard automations. If a flow doesn't trigger, type the command directly.
 
 ---
 
-## Commands
+## Commands (plugin)
 
 | Command | What it does |
 |---------|-------------|
@@ -67,7 +70,7 @@ Or download and install session-start.plugin from this repo.
 | `/end-session` | Saves progress, updates project status, and sets clear next steps. |
 | `/checkpoint` | Mid-session save without ending the session. |
 | `/new-project` | Kicks off a new tracked project with a context file and index entry. |
-| `/migrate` | Adds missing sections/files after a plugin update. Additive only — never overwrites. |
+| `/migrate` | Explains what changed since your last update in plain language, then (with your OK) adds missing sections/files. Additive only — never overwrites. |
 
 ---
 
@@ -76,7 +79,9 @@ Or download and install session-start.plugin from this repo.
 | Path | Purpose |
 |------|---------|
 | `CLAUDE.md` | Your identity, tools, preferences, hard rules, references, and agent index. The primary context file. |
-| `AGENTS.md` | Thin pointer to `CLAUDE.md` for Codex auto-discovery. |
+| `AGENTS.md` | Thin pointer to `CLAUDE.md` — read by Codex CLI, Cursor, Windsurf, Copilot, and most other coding agents. |
+| `GEMINI.md` | Thin pointer to `CLAUDE.md` — read by Gemini CLI, which looks for this filename instead of `AGENTS.md`. |
+| `.start-session-version` | Bookkeeping — records which plugin version last synced this workspace. Not meant to be edited by hand. |
 | `memory/projects.md` | Single source of truth for all your projects across every state. |
 | `memory/glossary.md` | Terms, acronyms, and shorthand the assistant should recognize. |
 | `templates/project-CLAUDE.md` | Template for new per-project context files. |
@@ -88,13 +93,21 @@ Or download and install session-start.plugin from this repo.
 
 ## Keeping context clean
 
-Three commands do all the maintenance:
-
 **`/start-session`** — orients the assistant before you begin. Reads your active projects, confirms where things stand, asks what you want to work on.
 
 **`/end-session`** — saves your progress. Updates the project file with decisions made, rewrites next steps, and updates the project index if status changed.
 
 **`/new-project`** — kicks off a new project. Creates the folder and context file, registers it in the index. No manual file editing.
+
+---
+
+## Staying up to date
+
+Plugin logic updates automatically at your next Claude startup — no reinstall needed. But some updates add new workspace sections or files, which the plugin can't retrofit into your existing `CLAUDE.md` on its own.
+
+`/start-session` checks a small version marker in your workspace (`.start-session-version`) against the plugin's current version. If they've drifted, it mentions it once — no blocking, no interrogation. Run `/migrate` whenever you're ready: it explains what's new in plain language, asks before touching anything, and only ever adds — nothing existing is removed or overwritten.
+
+`/migrate` runs in place, in your existing workspace folder — it never creates a new folder, and it never touches your `projects/` subfolders (aside from one optional, ask-first history split per project, described in the command itself). It only updates top-level system files.
 
 ---
 

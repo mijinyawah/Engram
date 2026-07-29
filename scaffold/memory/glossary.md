@@ -50,11 +50,13 @@ The assistant reads this file at session start — anything defined here won't n
 
 ## Project Shorthand
 
-<!-- Short names or codes for recurring projects. Update as projects come and go. -->
+<!-- Short names or codes for recurring projects. Update as projects come and go.
+     NO status column here — status lives only in memory/projects.md (single source of truth).
+     Anything stored in two places will eventually disagree. -->
 
-| Shorthand | Full Name | Status |
-|-----------|-----------|--------|
-| [e.g. PRJ-01] | [e.g. Project Name — short purpose] | [e.g. Active] |
+| Shorthand | Full Name (ID) |
+|-----------|----------------|
+| [e.g. Reel] | [e.g. PRJ-01 — Portfolio reel] |
 
 ---
 
